@@ -5,183 +5,958 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pixel-Fishing - Pfad des Helden</title>
     <style>
+        * { box-sizing: border-box; user-select: none; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #111;
+            margin: 0; padding: 0;
+            background-color: #0b0b0f;
             color: #fff;
             font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
         }
         #game-container {
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            border: 4px solid #444;
-            background-color: #222;
+            width: 900px; height: 600px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            border: 4px solid #333;
+            background-color: #111;
         }
-        canvas {
-            display: block;
-            background: #1a4c21;
-        }
-        .ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.85);
+        canvas { display: block; background: #1a4c21; }
+        .ui-layer {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(10, 10, 15, 0.95);
             z-index: 10;
         }
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px #000;
-        }
+        .hidden { display: none !important; }
+        h1 { color: #4CAF50; margin-bottom: 20px; text-shadow: 2px 2px #000; font-size: 32px; letter-spacing: 2px; }
+        h2 { color: #f1c40f; margin-bottom: 15px; }
         button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            margin: 8px;
-            font-size: 18px;
-            font-family: inherit;
-            cursor: pointer;
-            border-radius: 4px;
-            box-shadow: 0 4px #2e7d32;
-            transition: 0.1s;
+            background-color: #4CAF50; color: white; border: none;
+            padding: 12px 24px; margin: 8px; font-size: 16px;
+            font-family: inherit; cursor: pointer; border-radius: 6px;
+            box-shadow: 0 4px #2e7d32; transition: 0.1s; width: 240px; font-weight: bold;
         }
-        button:hover {
-            background-color: #45a049;
+        button:hover { background-color: #45a049; }
+        button:active { transform: translateY(4px); box-shadow: 0 0 #2e7d32; }
+        .secondary-btn { background-color: #e74c3c; box-shadow: 0 4px #c0392b; }
+        .secondary-btn:hover { background-color: #c0392b; }
+        
+        /* Character Customizer */
+        .customizer-box {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+            background: #1a1a24; padding: 25px; border-radius: 8px; border: 2px solid #333;
+            width: 600px; max-width: 90%;
         }
-        button:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 #2e7d32;
+        .customizer-group { display: flex; flex-direction: column; gap: 8px; }
+        .customizer-group label { font-size: 14px; color: #aaa; }
+        .customizer-group input, .customizer-group select {
+            padding: 8px; background: #2a2a38; border: 1px solid #444; color: #fff; font-family: inherit; border-radius: 4px;
         }
-        .hidden {
-            display: none !important;
+        .option-row { display: flex; align-items: center; justify-content: space-between; background: #22222e; padding: 6px 12px; border-radius: 4px; }
+        .option-row button { padding: 4px 10px; width: auto; font-size: 14px; margin: 0; }
+
+        /* HUD overlay inside game */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 15px;
+            z-index: 5;
         }
+        .hud-top, .hud-bottom { display: flex; justify-content: space-between; align-items: center; pointer-events: auto; }
+        .hud-panel { background: rgba(0,0,0,0.75); border: 2px solid #444; padding: 8px 15px; border-radius: 6px; font-size: 14px; }
+        
+        /* Modals inside game */
+        .modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #181824; border: 3px solid #444; border-radius: 8px; width: 700px; height: 450px;
+            display: flex; flex-direction: column; padding: 20px; z-index: 20; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-body { flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .close-x { background: #e74c3c; width: 30px; height: 30px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
+
+        /* Casting & Fishing Minigame Overlay */
+        #fishing-minigame {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.9); border: 3px solid #f1c40f; padding: 15px 25px; border-radius: 10px;
+            text-align: center; z-index: 15; width: 450px;
+        }
+        .meter-bar { width: 100%; height: 25px; background: #222; border: 2px solid #555; border-radius: 4px; position: relative; overflow: hidden; margin-top: 10px; }
+        .meter-cursor { position: absolute; top: 0; width: 6px; height: 100%; background: #fff; box-shadow: 0 0 8px #fff; }
+        .meter-zones { display: flex; height: 100%; width: 100%; }
+        .zone-green { background: rgba(46, 204, 113, 0.6); flex: 2; }
+        .zone-yellow { background: rgba(241, 196, 15, 0.6); flex: 2; }
+        .zone-red { background: rgba(231, 76, 60, 0.6); flex: 1; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- Hauptmenü -->
-        <div id="main-menu" class="ui-overlay">
-            <h1>PIXEL-FISHING</h1>
-            <button onclick="startGame()">Neues Spiel</button>
-            <button onclick="loadGame()">Spiel Fortsetzen</button>
-            <button onclick="openSettings()">Einstellungen</button>
-        </div>
+<div id="game-container">
+    <!-- HAUPTMENÜ -->
+    <div id="main-menu" class="ui-layer">
+        <h1>PIXEL-FISHING RPG</h1>
+        <button onclick="openCustomizer()">Neues Spiel</button>
+        <button onclick="loadGameData()">Spiel Fortsetzen</button>
+        <button onclick="openSettings()">Einstellungen</button>
+        <button onclick="openHelp()" class="secondary-btn">Hilfe & Steuerung</button>
+    </div>
 
-        <!-- Einstellungen -->
-        <div id="settings-menu" class="ui-overlay hidden">
-            <h1>Einstellungen</h1>
+    <!-- CHARAKTER-EDITOR -->
+    <div id="customizer-menu" class="ui-layer hidden">
+        <h1>CHARAKTER ERSTELLEN</h1>
+        <div class="customizer-box">
+            <div class="customizer-group">
+                <label>Name des Helden:</label>
+                <input type="text" id="char-name" value="AnglerJack" maxlength="15">
+                
+                <label>Geschlecht:</label>
+                <select id="char-gender" onchange="updateCustomizerPreview()">
+                    <option value="m">Männlich</option>
+                    <option value="w">Weiblich</option>
+                </select>
+
+                <div class="option-row">
+                    <span>Haar-Style:</span>
+                    <div>
+                        <button onclick="changeStyle('hair', -1)">◄</button>
+                        <span id="hair-val">1/5</span>
+                        <button onclick="changeStyle('hair', 1)">►</button>
+                    </div>
+                </div>
+                <div class="option-row">
+                    <span>Hut / Mütze:</span>
+                    <div>
+                        <button onclick="changeStyle('hat', -1)">◄</button>
+                        <span id="hat-val">1/5</span>
+                        <button onclick="changeStyle('hat', 1)">►</button>
+                    </div>
+                </div>
+            </div>
+            <div class="customizer-group">
+                <div class="option-row">
+                    <span>Klamotten:</span>
+                    <div>
+                        <button onclick="changeStyle('clothes', -1)">◄</button>
+                        <span id="clothes-val">1/5</span>
+                        <button onclick="changeStyle('clothes', 1)">►</button>
+                    </div>
+                </div>
+                <div class="option-row">
+                    <span>Stiefel:</span>
+                    <div>
+                        <button onclick="changeStyle('boots', -1)">◄</button>
+                        <span id="boots-val">1/5</span>
+                        <button onclick="changeStyle('boots', 1)">►</button>
+                    </div>
+                </div>
+                <div style="margin-top: auto; display: flex; justify-content: center;">
+                    <canvas id="previewCanvas" width="100" height="100" style="background:#222; border-radius:6px; border:2px solid #444;"></canvas>
+                </div>
+            </div>
+        </div>
+        <br>
+        <button onclick="startNewGameFinal()">Abenteuer Starten!</button>
+        <button onclick="backToMenu()" class="secondary-btn">Zurück</button>
+    </div>
+
+    <!-- EINSTELLUNGEN -->
+    <div id="settings-menu" class="ui-layer hidden">
+        <h1>EINSTELLUNGEN</h1>
+        <div style="background:#1a1a24; padding:25px; border-radius:8px; border:2px solid #333; width:400px; text-align:center;">
             <p>Musik Lautstärke:</p>
-            <input type="range" id="music-vol" min="0" max="100" value="50">
+            <input type="range" id="music-vol" min="0" max="100" value="50" oninput="updateVolume()" style="width:100%;">
             <p>Sound Effekte:</p>
-            <input type="range" id="sfx-vol" min="0" max="100" value="80">
+            <input type="range" id="sfx-vol" min="0" max="100" value="80" oninput="updateVolume()" style="width:100%;">
             <br><br>
             <button onclick="closeSettings()">Zurück</button>
         </div>
-
-        <!-- Das eigentliche Spiel Canvas -->
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
     </div>
 
-    <!-- Hintergrundmusik (YouTube eingebunden) -->
-    <iframe id="bg-audio" width="0" height="0" src="https://www.youtube.com/embed/ByGhsipzw0I?enablejsapi=1&autoplay=1&loop=1" allow="autoplay" style="display:none;"></iframe>
+    <!-- HILFE & STEUERUNG -->
+    <div id="help-menu" class="ui-layer hidden">
+        <h1>HILFE & STEUERUNG</h1>
+        <div style="background:#1a1a24; padding:20px; border-radius:8px; border:2px solid #333; width:550px; text-align:left; font-size:15px; line-height: 1.6;">
+            <p><b>WASD:</b> Bewegen auf der Map</p>
+            <p><b>I:</b> Angelkoffer / Inventar öffnen</p>
+            <p><b>B:</b> Fisch-Enzyklopädie (Buch) öffnen</p>
+            <p><b>K:</b> Fähigkeiten (Skills) öffnen</p>
+            <p><b>Q:</b> Quests anzeigen</p>
+            <p><b>Linke Maustaste:</b> Angeln auswerfen, Anschlagen & Drill-Minigame</p>
+            <p><b>W / A / S / D im Drill:</b> Aktive Drill-Tasten drücken, um den Fisch auszupowern!</p>
+            <br>
+            <div style="text-align: center;"><button onclick="closeHelp()">Verstanden</button></div>
+        </div>
+    </div>
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+    <!-- SPIEL INTERFACE & CANVAS -->
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
 
-        let gameStarted = false;
+    <div id="hud" class="hidden">
+        <div class="hud-top">
+            <div class="hud-panel" id="hud-player-info">Name: Jack | Level: 1 | XP: 0/100</div>
+            <div class="hud-panel" id="hud-money">Geld: 50 € | SP: 0</div>
+            <div class="hud-panel" id="hud-location">Gewässer: Whispering Lake (Map 1)</div>
+        </div>
+        <div class="hud-bottom">
+            <div class="hud-panel">Drücke [I] Koffer | [B] Fischbuch | [Q] Quests | [K] Skills</div>
+            <div class="hud-panel" id="hud-quest-tracker">Aktive Quest: Fange 3 Fische (0/3)</div>
+        </div>
+    </div>
 
-        // Spieler-Objekt
-        let player = {
-            x: 400,
-            y: 300,
-            speed: 3,
-            size: 20,
-            color: "#3498db"
-        };
+    <!-- FISHING MINIGAME HUD -->
+    <div id="fishing-minigame" class="hidden">
+        <h3 id="fishing-status-text">Wurfweite bestimmen</h3>
+        <div class="meter-bar" id="casting-meter-container">
+            <div class="meter-zones">
+                <div class="zone-green"></div>
+                <div class="zone-yellow"></div>
+                <div class="zone-red"></div>
+            </div>
+            <div class="meter-cursor" id="meter-cursor" style="left: 0%;"></div>
+        </div>
+        <p id="fishing-instruction" style="font-size:13px; color:#aaa; margin-top:8px;">Klicke Linksklick zum Auswerfen!</p>
+    </div>
 
-        let keys = {};
+    <!-- INVENTAR / KOFFER MODAL -->
+    <div id="inventory-modal" class="modal hidden">
+        <div class="modal-header">
+            <h2>Angelkoffer & Inventar</h2>
+            <div class="close-x" onclick="closeModal('inventory-modal')">X</div>
+        </div>
+        <div class="modal-body">
+            <div>
+                <h3>Inventar (24 Plätze)</h3>
+                <div id="inventory-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px;"></div>
+            </div>
+            <div>
+                <h3>Kescher (Max 25 Fische)</h3>
+                <div id="net-grid" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:6px;"></div>
+            </div>
+        </div>
+    </div>
 
-        window.addEventListener("keydown", (e) => { keys[e.key.toLowerCase()] = true; });
-        window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+    <!-- FISCH-BUCH MODAL -->
+    <div id="encyclopedia-modal" class="modal hidden">
+        <div class="modal-header">
+            <h2>Persönliche Fisch-Enzyklopädie</h2>
+            <div class="close-x" onclick="closeModal('encyclopedia-modal')">X</div>
+        </div>
+        <div class="modal-body" style="grid-template-columns: 1fr;" id="encyclopedia-list">
+            <!-- Dynamisch -->
+        </div>
+    </div>
 
-        function startGame() {
-            document.getElementById("main-menu").classList.add("hidden");
-            gameStarted = true;
-            loop();
+    <!-- QUEST MODAL -->
+    <div id="quest-modal" class="modal hidden">
+        <div class="modal-header">
+            <h2>Quests am Gewässer</h2>
+            <div class="close-x" onclick="closeModal('quest-modal')">X</div>
+        </div>
+        <div class="modal-body" style="grid-template-columns: 1fr;" id="quest-list-container">
+            <!-- Dynamisch -->
+        </div>
+    </div>
+
+    <!-- SKILL MODAL -->
+    <div id="skill-modal" class="modal hidden">
+        <div class="modal-header">
+            <h2>Fertigkeiten-Baum</h2>
+            <div class="close-x" onclick="closeModal('skill-modal')">X</div>
+        </div>
+        <div class="modal-body" style="grid-template-columns: 1fr;" id="skill-list-container">
+            <!-- Dynamisch -->
+        </div>
+    </div>
+
+    <!-- SHOP MODAL -->
+    <div id="shop-modal" class="modal hidden">
+        <div class="modal-header">
+            <h2>Tackle & Köder Shop</h2>
+            <div class="close-x" onclick="closeModal('shop-modal')">X</div>
+        </div>
+        <div class="modal-body" style="grid-template-columns: 1fr;" id="shop-list-container">
+            <!-- Dynamisch -->
+        </div>
+    </div>
+
+</div>
+
+<!-- Musik (YouTube Embed mit Lautstärke) -->
+<iframe id="bg-audio" width="0" height="0" src="https://www.youtube.com/embed/ByGhsipzw0I?autoplay=1&loop=1&playlist=ByGhsipzw0I" allow="autoplay" style="display:none;"></iframe>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // SPIELZUSTAND & DATEN
+    let gameState = "MENU"; // MENU, CUSTOMIZER, SETTINGS, HELP, WORLD, CASTING, WAITING_BITE, DRILL, SHOP, QUESTS, BOOK, INVENTORY, SKILLS
+    
+    let player = {
+        name: "Jack",
+        gender: "m",
+        hair: 1,
+        hat: 1,
+        clothes: 1,
+        boots: 1,
+        x: 450,
+        y: 300,
+        speed: 3.5,
+        size: 24,
+        money: 100,
+        level: 1,
+        xp: 0,
+        xpNext: 100,
+        skillPoints: 0,
+        currentMap: 1
+    };
+
+    let inventory = new Array(24).fill(null);
+    let fishNet = new Array(25).fill(null);
+
+    // Start-Köder im Inventar
+    inventory[0] = { type: 'bait', name: 'Brotwürfel', count: 10 };
+    inventory[1] = { type: 'bait', name: 'Wurm', count: 5 };
+    inventory[2] = { type: 'rod', name: 'Bambusangel', level: 1 };
+    inventory[3] = { type: 'knife', name: 'Rostiges Messer', qualityMod: 1.0 };
+
+    // Fischarten für Map 1: Whispering Lake
+    const fishesMap1 = [
+        { id: 'rotauge', name: 'Rotauge', minSize: 10, maxSize: 30, minWeight: 50, maxWeight: 400, diff: 1, baitReq: 'Brotwürfel', basePrice: 8 },
+        { id: 'brasse', name: 'Brasse', minSize: 20, maxSize: 50, minWeight: 200, maxWeight: 2500, diff: 2, baitReq: 'Wurm', basePrice: 20 },
+        { id: 'barsch', name: 'Barsch', minSize: 15, maxSize: 40, minWeight: 100, maxWeight: 1500, diff: 2, baitReq: 'Wurm', basePrice: 25 },
+        { id: 'karpfen', name: 'Karpfen', minSize: 30, maxSize: 80, minWeight: 1000, maxWeight: 12000, diff: 3, baitReq: 'Brotwürfel', basePrice: 60 },
+        { id: 'aal', name: 'Aal', minSize: 40, maxSize: 100, minWeight: 300, maxWeight: 3000, diff: 3, baitReq: 'Wurm', basePrice: 75 },
+        { id: 'hecht', name: 'Hecht', minSize: 50, maxSize: 120, minWeight: 1500, maxWeight: 15000, diff: 4, baitReq: 'Wurm', basePrice: 150 },
+        { id: 'wels', name: 'Wels', minSize: 80, maxSize: 220, minWeight: 5000, maxWeight: 65000, diff: 5, baitReq: 'Wurm', basePrice: 350 }
+    ];
+
+    let encyclopedia = {};
+    fishesMap1.forEach(f => { encyclopedia[f.id] = { caught: false, maxLen: 0, maxWei: 0, count: 0 }; });
+
+    // Skills (20 Stück)
+    let skillsData = [
+        { id: 's1', name: 'Ausdauer-Dämpfer', desc: 'Fisch-Ausdauer sinkt 5% schneller.', level: 0, max: 5 },
+        { id: 's2', name: 'Meisterwurf', desc: 'Wurfmeter verlangsamt sich um 5%.', level: 0, max: 5 },
+        { id: 's3', name: 'Fisch-Händler', desc: 'Verkaufspreis von Fischen +5%.', level: 0, max: 5 },
+        { id: 's4', name: 'Adlerauge', desc: 'Biss-Reaktionsfenster +0.2s länger.', level: 0, max: 5 },
+        { id: 's5', name: 'Köder-Schoner', desc: '20% Chance, Köder bei Abriss zu behalten.', level: 0, max: 5 },
+        { id: 's6', name: 'Schneller Kurbeln', desc: 'Einholtempo im Drill +10%.', level: 0, max: 5 },
+        { id: 's7', name: 'Kapitaler Magnet', desc: 'Chance auf schwerere Fische +3%.', level: 0, max: 5 },
+        { id: 's8', name: 'Taschen-Erweiterung', desc: 'Mehr Start-Glück (Platzhalter).', level: 0, max: 5 },
+        { id: 's9', name: 'Schnell-Reflexe', desc: 'WASD Drill-Tasten Zeitfenster +10%.', level: 0, max: 5 },
+        { id: 's10', name: 'Erfahrungs-Boost', desc: 'Erhaltene XP durch Quests +10%.', level: 0, max: 5 },
+        { id: 's11', name: 'Filmier-Profi', desc: 'Chance auf besseres Filet erhöht.', level: 0, max: 5 },
+        { id: 's12', name: 'Geldsegen', desc: 'Quest-Belohnungen in Geld +10%.', level: 0, max: 5 },
+        { id: 's13', name: 'Geduld des Mönchs', desc: 'Wartezeit auf Fischbissschub -5%.', level: 0, max: 5 },
+        { id: 's14', name: 'Unerschrocken', desc: 'Drill-Fehler kosten weniger Ausdauer.', level: 0, max: 5 },
+        { id: 's15', name: 'Wurfkraft', desc: 'Maximalweite beim Auswerfen erhöht.', level: 0, max: 5 },
+        { id: 's16', name: 'Köder-Experte', desc: 'Lockwirkung von Ködern gesteigert.', level: 0, max: 5 },
+        { id: 's17', name: 'Netz-Träger', desc: 'Kescher-Kapazität +2.', level: 0, max: 5 },
+        { id: 's18', name: 'Messer-Schärfe', desc: 'Filletier-Bonus.', level: 0, max: 5 },
+        { id: 's19', name: 'Seemannsgarn', desc: 'Zufallsereignisse positiv.', level: 0, max: 5 },
+        { id: 's20', name: 'Fishing Legend', desc: 'Erhöht alle Werte leicht.', level: 0, max: 5 }
+    ];
+
+    // Quests für Map 1
+    let questsMap1 = [
+        { id: 'q1', title: 'Der Einstieg', desc: 'Fange 3 Fische beliebiger Art.', targetType: 'fish_any', targetCount: 3, current: 0, rewardXp: 50, rewardMoney: 30, done: false },
+        { id: 'q2', title: 'Rotaugen-Plage', desc: 'Fange 5 Rotaugen.', targetType: 'fish_specific', fishId: 'rotauge', targetCount: 5, current: 0, rewardXp: 80, rewardMoney: 50, done: false },
+        { id: 'q3', title: 'Der erste Karpfen', desc: 'Fange 1 Karpfen am Whispering Lake.', targetType: 'fish_specific', fishId: 'karpfen', targetCount: 1, current: 0, rewardXp: 120, rewardMoney: 90, done: false },
+        { id: 'q4', title: 'Barsch-Alarm', desc: 'Fange 3 Barsche.', targetType: 'fish_specific', fishId: 'barsch', targetCount: 3, current: 0, rewardXp: 100, rewardMoney: 70, done: false },
+        { id: 'q5', title: 'Aal in der Nacht', desc: 'Fange 2 Aale.', targetType: 'fish_specific', fishId: 'aal', targetCount: 2, current: 0, rewardXp: 150, rewardMoney: 120, done: false },
+        { id: 'q6', title: 'Brasse für den Koch', desc: 'Fange 4 Brassen.', targetType: 'fish_specific', fishId: 'brasse', targetCount: 4, current: 0, rewardXp: 110, rewardMoney: 80, done: false },
+        { id: 'q7', title: 'Hecht-König', desc: 'Fange 1 Hecht.', targetType: 'fish_specific', fishId: 'hecht', targetCount: 1, current: 0, rewardXp: 200, rewardMoney: 200, done: false },
+        { id: 'q8', title: 'Der Riese', desc: 'Fange 1 Wels.', targetType: 'fish_specific', fishId: 'wels', targetCount: 1, current: 0, rewardXp: 500, rewardMoney: 500, done: false },
+        { id: 'q9', title: 'Großfang Tour', desc: 'Fange insgesamt 10 Fische.', targetType: 'fish_any', targetCount: 10, current: 0, rewardXp: 250, rewardMoney: 220, done: false },
+        { id: 'q10', title: 'Meister des Sees', desc: 'Schließe alle vorherigen Quests ab.', targetType: 'quest_all', targetCount: 9, current: 0, rewardXp: 1000, rewardMoney: 1000, done: false }
+    ];
+
+    let activeQuestIndex = 0;
+
+    // Tasten Steuerung
+    let keys = {};
+    window.addEventListener("keydown", (e) => {
+        let k = e.key.toLowerCase();
+        keys[k] = true;
+
+        if (gameState === "DRILL") {
+            handleDrillKey(e.key.toUpperCase());
         }
 
-        function loadGame() {
-            alert("Kein Speicherstand gefunden!");
+        if (k === 'i' && (gameState === "WORLD" || gameState === "SHOP" || gameState === "QUESTS" || gameState === "BOOK" || gameState === "SKILLS")) {
+            toggleModal('inventory-modal');
         }
+        if (k === 'b' && gameState === "WORLD") { openEncyclopediaModal(); }
+        if (k === 'q' && gameState === "WORLD") { openQuestModal(); }
+        if (k === 'k' && gameState === "WORLD") { openSkillModal(); }
+    });
+    window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
-        function openSettings() {
-            document.getElementById("main-menu").classList.add("hidden");
-            document.getElementById("settings-menu").classList.remove("hidden");
+    canvas.addEventListener("mousedown", (e) => {
+        if (gameState === "CASTING") {
+            stopCastingMeter();
+        } else if (gameState === "WAITING_BITE" && biteReady) {
+            triggerHook();
+        } else if (gameState === "DRILL") {
+            reelInDrill();
         }
+    });
 
-        function closeSettings() {
-            document.getElementById("settings-menu").classList.add("hidden");
-            document.getElementById("main-menu").classList.remove("hidden");
-        }
+    // CUSTOMIZER LOGIK
+    function openCustomizer() {
+        document.getElementById("main-menu").classList.add("hidden");
+        document.getElementById("customizer-menu").classList.remove("hidden");
+        gameState = "CUSTOMIZER";
+        drawPreviewAvatar();
+    }
+    function backToMenu() {
+        document.getElementById("customizer-menu").classList.add("hidden");
+        document.getElementById("main-menu").classList.remove("hidden");
+        gameState = "MENU";
+    }
+    function changeStyle(part, dir) {
+        if (part === 'hair') { player.hair = ((player.hair + dir - 1 + 5) % 5) + 1; document.getElementById("hair-val").innerText = player.hair + "/5"; }
+        if (part === 'hat') { player.hat = ((player.hat + dir - 1 + 5) % 5) + 1; document.getElementById("hat-val").innerText = player.hat + "/5"; }
+        if (part === 'clothes') { player.clothes = ((player.clothes + dir - 1 + 5) % 5) + 1; document.getElementById("clothes-val").innerText = player.clothes + "/5"; }
+        if (part === 'boots') { player.boots = ((player.boots + dir - 1 + 5) % 5) + 1; document.getElementById("boots-val").innerText = player.boots + "/5"; }
+        drawPreviewAvatar();
+    }
+    function updateCustomizerPreview() {
+        player.gender = document.getElementById("char-gender").value;
+        drawPreviewAvatar();
+    }
+    function drawPreviewAvatar() {
+        const pCanvas = document.getElementById("previewCanvas");
+        const pCtx = pCanvas.getContext("2d");
+        pCtx.clearRect(0,0,100,100);
+        
+        // Einfache Pixelart-Vorschau des Avatars
+        pCtx.fillStyle = player.gender === 'm' ? "#3498db" : "#e84393";
+        pCtx.fillRect(35, 40, 30, 40); // Körper
+        pCtx.fillStyle = "#f1c27d";
+        pCtx.fillRect(38, 20, 24, 22); // Kopf
+        pCtx.fillStyle = ["#555","#e67e22","#8e44ad","#2c3e50","#c0392b"][player.hair-1];
+        pCtx.fillRect(37, 16, 26, 8); // Haare
+        pCtx.fillStyle = ["#e74c3c","#2ecc71","#f1c40f","#34495e","#e67e22"][player.hat-1];
+        pCtx.fillRect(35, 12, 30, 6); // Hut
+    }
+    function startNewGameFinal() {
+        const nameVal = document.getElementById("char-name").value.trim();
+        if(nameVal) player.name = nameVal;
+        
+        document.getElementById("customizer-menu").classList.add("hidden");
+        document.getElementById("hud").classList.remove("hidden");
+        gameState = "WORLD";
+        updateHUD();
+        loop();
+    }
 
-        function update() {
-            if (!gameStarted) return;
+    // SETTINGS & HELP
+    function openSettings() {
+        document.getElementById("main-menu").classList.add("hidden");
+        document.getElementById("settings-menu").classList.remove("hidden");
+        gameState = "SETTINGS";
+    }
+    function closeSettings() {
+        document.getElementById("settings-menu").classList.add("hidden");
+        document.getElementById("main-menu").classList.remove("hidden");
+        gameState = "MENU";
+    }
+    function openHelp() {
+        document.getElementById("main-menu").classList.add("hidden");
+        document.getElementById("help-menu").classList.remove("hidden");
+        gameState = "HELP";
+    }
+    function closeHelp() {
+        document.getElementById("help-menu").classList.add("hidden");
+        document.getElementById("main-menu").classList.remove("hidden");
+        gameState = "MENU";
+    }
+    function updateVolume() {
+        // Lautstärke Steuerung via HTML Range (Platzhalter / verknüpft)
+    }
 
-            // WASD Bewegung
-            if (keys['w'] || keys['W']) player.y -= player.speed;
-            if (keys['s'] || keys['S']) player.y += player.speed;
-            if (keys['a'] || keys['A']) player.x -= player.speed;
-            if (keys['d'] || keys['D']) player.x += player.speed;
+    // SPEICHERN & LADEN
+    function saveGameData() {
+        const data = { player, inventory, fishNet, encyclopedia, skillsData, questsMap1, activeQuestIndex };
+        localStorage.setItem("pixel_fishing_save", JSON.stringify(data));
+        alert("Spielstand erfolgreich gespeichert!");
+    }
+    function loadGameData() {
+        const saved = localStorage.getItem("pixel_fishing_save");
+        if(!saved) { alert("Kein Speicherstand gefunden!"); return; }
+        const data = JSON.parse(saved);
+        player = data.player;
+        inventory = data.inventory;
+        fishNet = data.fishNet;
+        encyclopedia = data.encyclopedia;
+        skillsData = data.skillsData;
+        questsMap1 = data.questsMap1;
+        activeQuestIndex = data.activeQuestIndex;
 
-            // Begrenzung am Bildschirmrand
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
-            if (player.y < 0) player.y = 0;
-            if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
-        }
+        document.getElementById("main-menu").classList.add("hidden");
+        document.getElementById("hud").classList.remove("hidden");
+        gameState = "WORLD";
+        updateHUD();
+        loop();
+        alert("Spielstand geladen!");
+    }
 
-        function draw() {
-            // Hintergrund (Wiese / See)
-            ctx.fillStyle = "#2ecc71";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // MAP 1: WHISPERING LAKE WELT & LOKATIONEN
+    // Map Dimension: 900x600. Uferzone ist Wasser im Westen (x: 0 bis 250).
+    const waterRect = { x: 0, y: 100, w: 260, h: 400 };
+    const shopNPC = { x: 750, y: 250, w: 30, h: 30, name: "Tackle-Händler" };
+    const questNPC = { x: 750, y: 400, w: 30, h: 30, name: "Quest-Geber" };
 
-            // Blauer See in der Mitte
-            ctx.fillStyle = "#2980b9";
-            ctx.fillRect(100, 100, 250, 400);
+    function updateWorld() {
+        let dx = 0, dy = 0;
+        if(keys['w'] || keys['W']) dy -= player.speed;
+        if(keys['s'] || keys['S']) dy += player.speed;
+        if(keys['a'] || keys['A']) dx -= player.speed;
+        if(keys['d'] || keys['D']) dx += player.speed;
 
-            if (gameStarted) {
-                // Spieler zeichnen
-                ctx.fillStyle = player.color;
-                ctx.fillRect(player.x, player.y, player.size, player.size);
+        player.x += dx;
+        player.y += dy;
 
-                // UI Text im Spiel
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "16px Courier New";
-                ctx.fillText("Gewässer: Dorfteich | Steuerung: WASD zum Laufen", 20, 30);
+        // Bildschirmbegrenzung
+        if(player.x < 10) player.x = 10;
+        if(player.x > canvas.width - player.size - 10) player.x = canvas.width - player.size - 10;
+        if(player.y < 50) player.y = 50;
+        if(player.y > canvas.height - player.size - 10) player.y = canvas.height - player.size - 10;
+
+        // Interaktion mit NPCs bei Nähe
+        let distShop = Math.hypot(player.x - shopNPC.x, player.y - shopNPC.y);
+        if(distShop < 40 && keys['e']) { openShopModal(); }
+
+        let distQuest = Math.hypot(player.x - questNPC.x, player.y - questNPC.y);
+        if(distQuest < 40 && keys['e']) { openQuestModal(); }
+
+        // Wenn Spieler am Ufer steht (Nähe zum Wasser) und Leertaste oder Linksklick drückt, um zu angeln
+        if(player.x >= waterRect.x + waterRect.w - 15 && player.x <= waterRect.x + waterRect.w + 25 &&
+           player.y >= waterRect.y && player.y <= waterRect.y + waterRect.h) {
+            if(keys[' ']) {
+                keys[' '] = false;
+                startCasting();
             }
         }
+    }
 
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
+    function drawWorld() {
+        // Wiese / Hintergrund
+        ctx.fillStyle = "#1e7e34";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // See (Whispering Lake)
+        ctx.fillStyle = "#1b4f72";
+        ctx.fillRect(waterRect.x, waterRect.y, waterRect.w, waterRect.h);
+        ctx.fillStyle = "#2980b9";
+        ctx.fillRect(waterRect.x + 10, waterRect.y + 10, waterRect.w - 20, waterRect.h - 20);
+
+        // Steg zum Angeln
+        ctx.fillStyle = "#8d6e63";
+        ctx.fillRect(waterRect.x + waterRect.w - 30, waterRect.y + 180, 50, 40);
+
+        // Shop NPC
+        ctx.fillStyle = "#e67e22";
+        ctx.fillRect(shopNPC.x, shopNPC.y, shopNPC.w, shopNPC.h);
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px Courier New";
+        ctx.fillText("🛒 Shop", shopNPC.x - 10, shopNPC.y - 8);
+
+        // Quest NPC
+        ctx.fillStyle = "#9b59b6";
+        ctx.fillRect(questNPC.x, questNPC.y, questNPC.w, questNPC.h);
+        ctx.fillStyle = "#fff";
+        ctx.fillText("📜 Quest", questNPC.x - 10, questNPC.y - 8);
+
+        // Spieler zeichnen
+        ctx.fillStyle = player.gender === 'm' ? "#3498db" : "#e84393";
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+        ctx.fillStyle = "#f1c27d";
+        ctx.fillRect(player.x + 4, player.y - 6, 16, 14);
+
+        // Hinweis am Ufer
+        if(player.x >= waterRect.x + waterRect.w - 25 && player.x <= waterRect.x + waterRect.w + 35) {
+            ctx.fillStyle = "#ffff00";
+            ctx.font = "14px Courier New";
+            ctx.fillText("Drücke [Leertaste] zum Angeln!", player.x - 60, player.y - 15);
         }
-    </script>
+        
+        // NPC Info Hinweise
+        if(Math.hypot(player.x - shopNPC.x, player.y - shopNPC.y) < 50) {
+            ctx.fillStyle = "#fff";
+            ctx.fillText("Drücke 'E' für Shop (Platzhalter / Klick)", shopNPC.x - 60, shopNPC.y - 25);
+        }
+    }
+
+    // FISHING & CASTING MECHANICS
+    let castingPower = 0;
+    let castingDirection = 1;
+    let biteReady = false;
+    let currentHookedFish = null;
+    let drillProgress = 100;
+    let fishStamina = 100;
+    let currentDrillKey = 'W';
+    let biteTimer = null;
+
+    function startCasting() {
+        gameState = "CASTING";
+        castingPower = 0;
+        castingDirection = 2;
+        document.getElementById("fishing-minigame").classList.remove("hidden");
+        document.getElementById("fishing-status-text").innerText = "Wurfweite bestimmen (Linksklick)";
+    }
+
+    function updateCastingMeter() {
+        if(gameState !== "CASTING") return;
+        castingPower += castingDirection * 1.5;
+        if(castingPower >= 100 || castingPower <= 0) castingDirection *= -1;
+        document.getElementById("meter-cursor").style.left = castingPower + "%";
+    }
+
+    function stopCastingMeter() {
+        if(gameState !== "CASTING") return;
+        document.getElementById("fishing-minigame").classList.add("hidden");
+        gameState = "WAITING_BITE";
+        
+        // Warte auf Fischbiss (2 bis 5 Sekunden)
+        let waitTime = 2000 + Math.random() * 3000;
+        biteReady = false;
+        document.getElementById("hud-location").innerText = "Gewässer: Warten auf Biss...";
+        
+        biteTimer = setTimeout(() => {
+            if(gameState === "WAITING_BITE") {
+                biteReady = true;
+                document.getElementById("hud-location").innerText = "⚠️ BISS! Klicke SOFORT!";
+            }
+        }, waitTime);
+    }
+
+    function triggerHook() {
+        if(!biteReady) {
+            // Zu früh angeschlagen -> Fehlbiss
+            resetToWorld("Zu früh angeschlagen! Fisch ist weg.");
+            return;
+        }
+        clearTimeout(biteTimer);
+        biteReady = false;
+
+        // Fisch zufällig aus Map 1 auswählen based on weight/difficulty
+        let randFish = fishesMap1[Math.floor(Math.random() * fishesMap1.length)];
+        currentHookedFish = {
+            ...randFish,
+            actualSize: (randFish.minSize + Math.random() * (randFish.maxSize - randFish.minSize)).toFixed(1),
+            actualWeight: (randFish.minWeight + Math.random() * (randFish.maxWeight - randFish.minWeight)).toFixed(0)
+        };
+
+        startDrill();
+    }
+
+    function startDrill() {
+        gameState = "DRILL";
+        fishStamina = 100;
+        drillProgress = 50;
+        setRandomDrillKey();
+        
+        document.getElementById("fishing-minigame").classList.remove("hidden");
+        document.getElementById("fishing-status-text").innerText = `Drill! Drücke Taste: [${currentDrillKey}] & Linksklick!`;
+    }
+
+    function setRandomDrillKey() {
+        const keysList = ['W', 'A', 'S', 'D'];
+        currentDrillKey = keysList[Math.floor(Math.random() * keysList.length)];
+    }
+
+    function handleDrillKey(k) {
+        if(gameState !== "DRILL") return;
+        if(k === currentDrillKey) {
+            fishStamina -= 12;
+            drillProgress += 8;
+            setRandomDrillKey();
+            document.getElementById("fishing-status-text").innerText = `Drill! Drücke Taste: [${currentDrillKey}] & Linksklick!`;
+            checkDrillComplete();
+        }
+    }
+
+    function reelInDrill() {
+        if(gameState !== "DRILL") return;
+        fishStamina -= 6;
+        drillProgress += 5;
+        checkDrillComplete();
+    }
+
+    function updateDrill() {
+        if(gameState !== "DRILL") return;
+        fishStamina += 0.15; // Fisch erholt sich langsam
+        if(fishStamina > 100) fishStamina = 100;
+        if(fishStamina <= 0) {
+            // Fisch erfolgreich ermüdet!
+            catchFishSuccess();
+        }
+    }
+
+    function checkDrillComplete() {
+        if(drillProgress >= 100) {
+            catchFishSuccess();
+        }
+    }
+
+    function catchFishSuccess() {
+        document.getElementById("fishing-minigame").classList.add("hidden");
+        
+        // Ins Kescher legen
+        let netIndex = fishNet.findIndex(slot => slot === null);
+        if(netIndex === -1) {
+            alert("Kescher ist voll! (Max 25 Fische). Fisch entkommen.");
+            resetToWorld("Kescher voll!");
+            return;
+        }
+
+        fishNet[netIndex] = currentHookedFish;
+
+        // Enzyklopädie aktualisieren
+        let entry = encyclopedia[currentHookedFish.id];
+        entry.caught = true;
+        entry.count++;
+        if(Number(currentHookedFish.actualSize) > entry.maxLen) entry.maxLen = Number(currentHookedFish.actualSize);
+        if(Number(currentHookedFish.actualWeight) > entry.maxWei) entry.maxWei = Number(currentHookedFish.actualWeight);
+
+        // Quest prüfen
+        checkQuestsOnCatch(currentHookedFish);
+
+        // XP & Levelup
+        player.xp += 25;
+        if(player.xp >= player.xpNext) {
+            player.level++;
+            player.xp = 0;
+            player.xpNext = Math.floor(player.xpNext * 1.3);
+            player.skillPoints++;
+            alert(`Level Up! Du bist jetzt Level ${player.level}! +1 Skillpunkt erhalten.`);
+        }
+
+        alert(`Erfolgreich gefangen: ${currentHookedFish.name} (${currentHookedFish.actualSize} cm, ${currentHookedFish.actualWeight} g)!`);
+        resetToWorld("Bereit zum nächsten Wurf.");
+    }
+
+    function resetToWorld(msg) {
+        document.getElementById("fishing-minigame").classList.add("hidden");
+        gameState = "WORLD";
+        updateHUD();
+        document.getElementById("hud-location").innerText = "Gewässer: Whispering Lake (Map 1) - " + msg;
+    }
+
+    // QUEST SYSTEM
+    function checkQuestsOnCatch(fish) {
+        let q = questsMap1[activeQuestIndex];
+        if(!q || q.done) return;
+
+        if(q.targetType === 'fish_any') {
+            q.current++;
+        } else if(q.targetType === 'fish_specific' && q.fishId === fish.id) {
+            q.current++;
+        }
+
+        if(q.current >= q.targetCount) {
+            q.done = true;
+            player.money += q.rewardMoney;
+            player.xp += q.rewardXp;
+            alert(`Quest abgeschlossen: "${q.title}"! Belohnung: ${q.rewardMoney}€ & ${q.rewardXp} XP`);
+            
+            // Nächste Quest aktivieren
+            if(activeQuestIndex < questsMap1.length - 1) activeQuestIndex++;
+        }
+        updateHUD();
+    }
+
+    function updateHUD() {
+        document.getElementById("hud-player-info").innerText = `Name: ${player.name} | Level: ${player.level} | XP: ${player.xp}/${player.xpNext}`;
+        document.getElementById("hud-money").innerText = `Geld: ${player.money} € | SP: ${player.skillPoints}`;
+        let q = questsMap1[activeQuestIndex];
+        document.getElementById("hud-quest-tracker").innerText = q ? `Aktive Quest: ${q.title} (${q.current}/${q.targetCount})` : "Alle Quests abgeschlossen!";
+    }
+
+    // MODALS RENDERING (Inventar, Buch, Quests, Skills, Shop)
+    function toggleModal(id) {
+        const el = document.getElementById(id);
+        if(el.classList.contains("hidden")) {
+            el.classList.remove("hidden");
+            if(id === 'inventory-modal') renderInventoryModal();
+        } else {
+            el.classList.add("hidden");
+        }
+    }
+    function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+    function renderInventoryModal() {
+        // Inventar Grid (24)
+        let invContainer = document.getElementById("inventory-grid");
+        invContainer.innerHTML = "";
+        inventory.forEach((item, idx) => {
+            let div = document.createElement("div");
+            div.style.cssText = "background:#222; border:1px solid #444; height:50px; display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; padding:2px; border-radius:4px;";
+            if(item) {
+                div.innerHTML = `<b>${item.name}</b><br>${item.count ? 'Anz:'+item.count : ''}`;
+            } else {
+                div.style.color = "#555";
+                div.innerText = "Leer";
+            }
+            invContainer.appendChild(div);
+        });
+
+        // Kescher Grid (25)
+        let netContainer = document.getElementById("net-grid");
+        netContainer.innerHTML = "";
+        fishNet.forEach((fish, idx) => {
+            let div = document.createElement("div");
+            div.style.cssText = "background:#1e3d2f; border:1px solid #2e7d32; height:55px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10px; text-align:center; padding:2px; border-radius:4px; cursor:pointer;";
+            if(fish) {
+                div.innerHTML = `<b>${fish.name}</b><br>${fish.actualWeight}g<br><span style="color:#f1c40f;" onclick="sellFish(${idx}, event)">Verkauf</span>`;
+            } else {
+                div.style.background = "#222";
+                div.style.border = "1px solid #444";
+                div.style.color = "#555";
+                div.innerText = "Kescher";
+            }
+            netContainer.appendChild(div);
+        });
+    }
+
+    function sellFish(index, e) {
+        e.stopPropagation();
+        let fish = fishNet[index];
+        if(!fish) return;
+        let price = Math.round(fish.basePrice * (fish.actualWeight / 500));
+        if(price < 5) price = 5;
+        player.money += price;
+        fishNet[index] = null;
+        renderInventoryModal();
+        updateHUD();
+        alert(`Fisch für ${price} € verkauft!`);
+    }
+
+    function openEncyclopediaModal() {
+        let list = document.getElementById("encyclopedia-list");
+        list.innerHTML = "";
+        fishesMap1.forEach(f => {
+            let entry = encyclopedia[f.id];
+            let div = document.createElement("div");
+            div.style.cssText = "background:#222230; padding:10px; border-radius:6px; border:1px solid #444; display:flex; justify-content:space-between; align-items:center;";
+            if(entry.caught) {
+                div.innerHTML = `<div><b>${f.name}</b> (Gefangen: ${entry.count}x)<br><span style="font-size:12px; color:#aaa;">Max Größe: ${entry.maxLen} cm | Max Gewicht: ${entry.maxWei} g</span></div>`;
+            } else {
+                div.innerHTML = `<div style="color:#666;"><b>??? (Unbekannter Fisch)</b><br><span style="font-size:12px;">Noch nie gefangen</span></div>`;
+            }
+            list.appendChild(div);
+        });
+        document.getElementById("encyclopedia-modal").classList.remove("hidden");
+    }
+
+    function openQuestModal() {
+        let list = document.getElementById("quest-list-container");
+        list.innerHTML = "";
+        questsMap1.forEach((q, idx) => {
+            let div = document.createElement("div");
+            div.style.cssText = `background:${idx === activeQuestIndex ? '#263238' : '#1e1e28'}; padding:12px; border-radius:6px; border:1px solid ${idx === activeQuestIndex ? '#4CAF50' : '#444'};`;
+            div.innerHTML = `<b>${q.title}</b> ${q.done ? '✅ (Abgeschlossen)' : ''}<br><span style="font-size:13px; color:#ccc;">${q.desc}</span><br><span style="font-size:12px; color:#f1c40f;">Fortschritt: ${q.current}/${q.targetCount} | Belohnung: ${q.rewardMoney}€, ${q.rewardXp} XP</span>`;
+            list.appendChild(div);
+        });
+        document.getElementById("quest-modal").classList.remove("hidden");
+    }
+
+    function openSkillModal() {
+        let list = document.getElementById("skill-list-container");
+        list.innerHTML = "";
+        skillsData.forEach((s, idx) => {
+            let div = document.createElement("div");
+            div.style.cssText = "background:#1e1e28; padding:10px; border-radius:6px; border:1px solid #444; display:flex; justify-content:space-between; align-items:center;";
+            div.innerHTML = `<div><b>${s.name}</b> (Stufe ${s.level}/${s.max})<br><span style="font-size:12px; color:#aaa;">${s.desc}</span></div>`;
+            let btn = document.createElement("button");
+            btn.innerText = "+ Verbessern";
+            btn.style.cssText = "width:auto; padding:6px 12px; font-size:12px;";
+            btn.onclick = () => {
+                if(player.skillPoints > 0 && s.level < s.max) {
+                    player.skillPoints--;
+                    s.level++;
+                    openSkillModal();
+                    updateHUD();
+                } else {
+                    alert("Nicht genügend Skillpunkte oder Maximum erreicht!");
+                }
+            };
+            div.appendChild(btn);
+            list.appendChild(div);
+        });
+        document.getElementById("skill-modal").classList.remove("hidden");
+    }
+
+    function openShopModal() {
+        let list = document.getElementById("shop-list-container");
+        list.innerHTML = "";
+        
+        let shopItems = [
+            { name: 'Würmer (Packung)', price: 15, type: 'bait', count: 10 },
+            { name: 'Brotwürfel (Packung)', price: 10, type: 'bait', count: 15 },
+            { name: 'Glasfaserangel (Level 2)', price: 250, type: 'rod', level: 2 },
+            { name: 'Scharfes Filetiermesser', price: 120, type: 'knife', qualityMod: 1.5 }
+        ];
+
+        shopItems.forEach(item => {
+            let div = document.createElement("div");
+            div.style.cssText = "background:#222230; padding:10px; border-radius:6px; border:1px solid #444; display:flex; justify-content:space-between; align-items:center;";
+            div.innerHTML = `<div><b>${item.name}</b><br><span style="font-size:12px; color:#f1c40f;">Preis: ${item.price} €</span></div>`;
+            let btn = document.createElement("button");
+            btn.innerText = "Kaufen";
+            btn.style.cssText = "width:auto; padding:6px 12px; font-size:12px;";
+            btn.onclick = () => {
+                if(player.money >= item.price) {
+                    player.money -= item.price;
+                    // Ins Inventar packen
+                    let slot = inventory.findIndex(s => s === null);
+                    if(slot !== -1) {
+                        inventory[slot] = item;
+                        alert(`Erfolgreich gekauft: ${item.name}`);
+                        updateHUD();
+                    } else {
+                        alert("Inventar ist voll!");
+                        player.money += item.price;
+                    }
+                } else {
+                    alert("Nicht genug Geld!");
+                }
+            };
+            div.appendChild(btn);
+            list.appendChild(div);
+        });
+        document.getElementById("shop-modal").classList.remove("hidden");
+    }
+
+    // MAIN GAME LOOP
+    function update() {
+        if(gameState === "WORLD") {
+            updateWorld();
+        } else if(gameState === "CASTING") {
+            updateCastingMeter();
+        } else if(gameState === "DRILL") {
+            updateDrill();
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(gameState === "WORLD" || gameState === "CASTING" || gameState === "WAITING_BITE" || gameState === "DRILL") {
+            drawWorld();
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+</script>
+
 </body>
 </html>
